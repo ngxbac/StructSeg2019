@@ -36,8 +36,8 @@ class MultiDiceLoss(nn.Module):
         for cls in range(self.num_classes):
             targets_cls = (targets == cls).float()
             outputs_cls = logits_softmax[:, cls]
-            score = criterion.dice(outputs_cls, targets_cls, eps=1e-7, activation='none', threshold=None)
+            score = 1 - criterion.dice(outputs_cls, targets_cls, eps=1e-7, activation='none', threshold=None)
             dice_loss += score / self.num_classes
 
-        loss = (1 - self.dice_weight) * ce_loss - self.dice_weight * dice_loss
+        loss = (1 - self.dice_weight) * ce_loss + self.dice_weight * dice_loss
         return loss
