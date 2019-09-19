@@ -144,7 +144,7 @@ def predict_test():
 
 def predict_valid():
     inputdir = "/data/Thoracic_OAR/"
-    outdir = "/data/predict/vnet34-baseline/"
+    outdir = "/data/predict/Vnet-resnet34-weighted-cedice-fold-0/"
 
     transform = valid_aug(image_size=512)
 
@@ -153,7 +153,7 @@ def predict_valid():
     folds = [0]
 
     for fold in folds:
-        log_dir = f"/logs/ss_task3/Vnet-resnet34-baseline-fold-{fold}"
+        log_dir = f"/logs/ss_task3/Vnet-resnet34-weighted-cedice-fold-{fold}"
         model = VNet(
             encoder_name='resnet34',
             classes=7,

@@ -27,8 +27,8 @@ stages:
   criterion_params:
     criterion: &criterion MultiDiceLoss
     activation: 'Softmax'
-    weight: [0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4]
-    dice_weight: 0.5
+    weight: [0.1, 0.2, 0.2, 0.3, 0.4, 0.4, 0.4]
+    dice_weight: 0.6
 
   data_params:
     batch_size: 16
@@ -73,4 +73,5 @@ stages:
         callback: CheckpointCallback
 
 monitoring_params:
+  project: "SS_Task3"
   tags: [*model, *encoder_name, *criterion]
