@@ -1,0 +1,65 @@
+model_params:
+  model: ResidualUNet3D
+  in_channels: 1
+  out_channels: 1
+  f_maps: 32
+
+args:
+  expdir: "src"
+  logdir: &logdir "./logs/structseg"
+  baselogdir: "./logs/structseg"
+
+distributed_params:
+  opt_level: O1
+
+stages:
+
+  state_params:
+    main_metric: &reduce_metric dice
+    minimize_metric: False
+
+  criterion_params:
+    criterion: DiceLoss
+
+  data_params:
+    batch_size: 2
+    num_workers: 4
+    drop_last: False
+    # drop_last: True
+
+    image_size: &image_size 256
+    train_csv: "./csv/5folds/train_0.csv"
+    valid_csv: "./csv/5folds/valid_0.csv"
+    data: '3D'
+    root: "../Lung_GTV_sz48_st3_ds0.5_st2/"
+
+  stage1:
+
+    optimizer_params:
+      optimizer: Adam
+      lr: 0.0001
+
+    scheduler_params:
+      scheduler: OneCycleLR
+      num_steps: &num_epochs 50
+      lr_range: [0.0005, 0.00001]
+      warmup_steps: 5
+      momentum_range: [0.85, 0.95]
+
+    state_params:
+      num_epochs: *num_epochs
+
+    callbacks_params:
+      loss:
+        callback: CriterionCallback
+      optimizer:
+        callback: OptimizerCallback
+        accumulation_steps: 1
+      dice:
+        callback: DiceCallback
+      scheduler:
+        callback: SchedulerCallback
+        reduce_metric: *reduce_metric
+        # mode: 'batch'
+      saver:
+        callback: CheckpointCallback
