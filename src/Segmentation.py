@@ -28,16 +28,20 @@ device = torch.device('cuda')
 def predict(model, loader):
     model.eval()
     preds = []
+    pred_logits = []
     with torch.no_grad():
         for dct in loader:
             images = dct['images'].to(device)
             pred = model(images)
-            pred = F.softmax(pred, dim=1)
+            pred_sofmax = F.softmax(pred, dim=1)
+            pred_sofmax = pred_sofmax.detach().cpu().numpy()
             pred = pred.detach().cpu().numpy()
-            preds.append(pred)
+            preds.append(pred_sofmax)
+            pred_logits.append(pred)
 
     preds = np.concatenate(preds, axis=0)
-    return preds
+    pred_logits = np.concatenate(pred_logits, axis=0)
+    return preds, pred_logits
 
 
 class TestDataset(Dataset):
@@ -143,25 +147,26 @@ def predict_test():
 
 
 def predict_valid():
-    inputdir = "/data/Thoracic_OAR/"
-    outdir = "/data/predict/Vnet-resnet34-weighted-cedice-fold-0/"
+    inputdir = "/data/HaN_OAR/"
+
 
     transform = valid_aug(image_size=512)
 
     # nii_files = glob.glob(inputdir + "/*/data.nii.gz")
 
-    folds = [0]
+    folds = [1,2,3,4]
 
     for fold in folds:
-        log_dir = f"/logs/ss_task3/Vnet-resnet34-weighted-cedice-fold-{fold}"
+        outdir = f"/data/predict_task1/Vnet-se_resnext50_32x4d-weighted-cedice19-cbam-fold-{fold}"
+        log_dir = f"/logs/ss_task1/Vnet-se_resnext50_32x4d-weighted-cedice19-cbam-fold-{fold}"
         model = VNet(
-            encoder_name='resnet34',
-            classes=7,
+            encoder_name='se_resnext50_32x4d',
+            classes=23,
             # activation='sigmoid',
             group_norm=False,
             center='none',
-            attention_type='none',
-            reslink=False,
+            attention_type='cbam',
+            reslink=True,
             multi_task=False
         )
 
@@ -171,7 +176,7 @@ def predict_valid():
         model = nn.DataParallel(model)
         model = model.to(device)
 
-        df = pd.read_csv(f'./csv/5folds/valid_{fold}.csv')
+        df = pd.read_csv(f'./csv/task1_5folds/valid_{fold}.csv')
         patient_ids = df.patient_id.unique()
         for patient_id in patient_ids:
             print(patient_id)
@@ -190,7 +195,7 @@ def predict_valid():
                 drop_last=False
             )
 
-            pred_mask = predict(model, dataloader)
+            pred_mask, pred_logits = predict(model, dataloader)
             # import pdb
             # pdb.set_trace()
             pred_mask = np.argmax(pred_mask, axis=1).astype(np.uint8)
@@ -207,6 +212,7 @@ def predict_valid():
             SimpleITK.WriteImage(
                 pred_mask, patient_pred
             )
+            np.save(f"{patient_dir}/predic_logits.npy", pred_logits)
 
 
 if __name__ == '__main__':

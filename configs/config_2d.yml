@@ -28,7 +28,7 @@ stages:
     criterion: &criterion MultiDiceLoss
     activation: 'Softmax'
     weight: [0.1, 0.2, 0.2, 0.3, 0.4, 0.4, 0.4]
-    dice_weight: 0.6
+    dice_weight: 0.9
 
   data_params:
     batch_size: 16
@@ -39,6 +39,7 @@ stages:
     image_size: &image_size 512
     train_csv: "./csv/train_0.csv"
     valid_csv: "./csv/valid_0.csv"
+    data: "2D"
 
   stage1:
 
@@ -64,7 +65,7 @@ stages:
         accumulation_steps: 1
       dice:
         callback: MultiDiceCallback
-#        activation: 'Softmax'
+        activation: 'Softmax'
       scheduler:
         callback: SchedulerCallback
         reduce_metric: *reduce_metric

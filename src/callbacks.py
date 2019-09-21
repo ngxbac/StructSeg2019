@@ -14,7 +14,7 @@ class MultiDiceCallback(Callback):
         input_key: str = "targets",
         output_key: str = "logits",
         prefix: str = "dice",
-        activation: str = "Sigmoid",
+        activation: str = "Softmax",
         num_classes : int = 7,
     ):
         """
@@ -43,5 +43,5 @@ class MultiDiceCallback(Callback):
             outputs_cls = outputs[:, cls]
             score = criterion.dice(outputs_cls, targets_cls, eps=1e-7, activation='none', threshold=None)
             dice += score / self.num_classes
-            state.metrics.add_batch_value(name=self.prefix + str(cls), value=score)
+            # state.metrics.add_batch_value(name=self.prefix + str(cls), value=score)
         state.metrics.add_batch_value(name=self.prefix, value=dice)

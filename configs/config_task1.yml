@@ -1,8 +1,8 @@
 model_params:
   model: &model VNet
-  encoder_name: &encoder_name "resnet34"
+  encoder_name: &encoder_name "se_resnext50_32x4d"
   group_norm: &group_norm False
-  classes: 7
+  classes: 23
   center: !!str &center 'none'
   attention_type: !!str &attention_type 'cbam'
   reslink: True
@@ -27,7 +27,7 @@ stages:
   criterion_params:
     criterion: &criterion MultiDiceLoss
     activation: 'Softmax'
-    weight: [0.1, 0.2, 0.2, 0.3, 0.4, 0.4, 0.4]
+    weight: [0.1, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
     dice_weight: 0.9
 
   data_params:
@@ -66,6 +66,7 @@ stages:
       dice:
         callback: MultiDiceCallback
         activation: 'Softmax'
+        num_classes: 23
       scheduler:
         callback: SchedulerCallback
         reduce_metric: *reduce_metric
@@ -74,5 +75,5 @@ stages:
         callback: CheckpointCallback
 
 monitoring_params:
-  project: "SS_Task3"
+  project: "SS_Task1"
   tags: [*model, *encoder_name, *criterion]
