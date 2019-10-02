@@ -27,11 +27,11 @@ stages:
   criterion_params:
     criterion: &criterion MultiDiceLoss
     activation: 'Softmax'
-    weight: [0.1, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+    weight: [0.1, 0.3, 0.3, 0.3, 0.5, 0.3, 0.5, 0.5, 0.5, 0.3, 0.3, 0.5, 0.3, 0.3, 0.5, 0.5, 0.3, 0.3, 0.5, 0.5, 0.3, 0.3, 0.3]
     dice_weight: 0.9
 
   data_params:
-    batch_size: 16
+    batch_size: 12
     num_workers: 4
     drop_last: False
     # drop_last: True
@@ -49,7 +49,7 @@ stages:
 
     scheduler_params:
       scheduler: OneCycleLR
-      num_steps: &num_epochs 20
+      num_steps: &num_epochs 100
       lr_range: [0.0005, 0.00001]
       warmup_steps: 5
       momentum_range: [0.85, 0.95]

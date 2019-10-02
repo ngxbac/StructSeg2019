@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-export CUDA_VISIBLE_DEVICES=2,3
+export CUDA_VISIBLE_DEVICES=3
 RUN_CONFIG=config_task1.yml
 
 for model in se_resnext50_32x4d; do
-    for fold in 0 1 2 3 4; do
-        log_name=Vnet-$model-weighted-cedice19-cbam-fold-${fold}
+    for fold in 0; do
+        log_name=Vnet-$model-weighted3-cedice19-cbam-fold-${fold}
 #        tag="["Unet","$model","$loss","fold-$fold"]"
         #stage 1
         LOGDIR=/logs/ss_task1/${log_name}/

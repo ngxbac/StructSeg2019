@@ -154,11 +154,11 @@ def predict_valid():
 
     # nii_files = glob.glob(inputdir + "/*/data.nii.gz")
 
-    folds = [1,2,3,4]
+    folds = [0]
 
     for fold in folds:
-        outdir = f"/data/predict_task1/Vnet-se_resnext50_32x4d-weighted-cedice19-cbam-fold-{fold}"
-        log_dir = f"/logs/ss_task1/Vnet-se_resnext50_32x4d-weighted-cedice19-cbam-fold-{fold}"
+        outdir = f"/data/predict_task1/Vnet-se_resnext50_32x4d-weighted2-cedice19-cbam-fold-{fold}"
+        log_dir = f"/logs/ss_task1/Vnet-se_resnext50_32x4d-weighted2-cedice19-cbam-fold-{fold}"
         model = VNet(
             encoder_name='se_resnext50_32x4d',
             classes=23,
