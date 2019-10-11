@@ -13,7 +13,7 @@ This repository is the solution of 3rd place of Task3 and 5th place of Task4 of 
 
 
 # Note 
-You may see my model named as `VNet`, you might be confused to this [paper](https://arxiv.org/abs/1606.04797). 
+You may see my model named as `VNet`, you may be confused to this [paper](https://arxiv.org/abs/1606.04797). 
 Actually, it is not, the model is still `UNet`. I named as `V` because of my personal purpose (The full name is `VUONGNet`). 
 
 # How to run 
