@@ -41,18 +41,32 @@ class Experiment(ConfigExperiment):
 
         if train_csv:
             transform = train_aug(image_size)
-            train_set = StructSegTrain2D(
-                csv_file=train_csv,
-                transform=transform,
-            )
+            if data == '2D':
+                train_set = StructSegTrain2D(
+                    csv_file=train_csv,
+                    transform=transform,
+                )
+            else:
+                train_set = StructSegTrain3D(
+                    csv_file=train_csv,
+                    transform=transform,
+                    mode='train'
+                )
             datasets["train"] = train_set
 
         if valid_csv:
             transform = valid_aug(image_size)
-            valid_set = StructSegTrain2D(
-                csv_file=valid_csv,
-                transform=transform,
-            )
+            if data == '2D':
+                valid_set = StructSegTrain2D(
+                    csv_file=valid_csv,
+                    transform=transform,
+                )
+            else:
+                valid_set = StructSegTrain3D(
+                    csv_file=valid_csv,
+                    transform=transform,
+                    mode='valid'
+                )
             datasets["valid"] = valid_set
 
         return datasets

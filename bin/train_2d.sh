@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=0,1
 RUN_CONFIG=config_2d.yml
 
-for model in se_resnext50_32x4d; do
+for model in se_resnext50_32x4d resnet34; do
     for fold in 0 1 2 3 4; do
-        log_name=Vnet-$model-weighted-cedice19-fold-${fold}
+        log_name=FPN-$model-fold-${fold}
 #        tag="["Unet","$model","$loss","fold-$fold"]"
         #stage 1
-        LOGDIR=/logs/ss_task3/${log_name}/
-        catalyst-dl run \
-            --config=./configs/${RUN_CONFIG} \
+        LOGDIR=/logs/ss_miccai/${log_name}/
+
+#        catalyst-dl trace $LOGDIR
+        USE_WANDB=0 catalyst-dl run \
+            --config ./configs/${RUN_CONFIG} \
             --logdir=$LOGDIR \
             --out_dir=$LOGDIR:str \
             --model_params/encoder_name=$model:str \

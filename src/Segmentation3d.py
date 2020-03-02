@@ -11,21 +11,14 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import SimpleITK
 from augmentation import valid_aug
-from models import UNet3D
-# from segmentation_models_pytorch.unet import Unet
-
+from segmentation_models_pytorch.unet import Unet
+from models import ResidualUNet3D
 
 import scipy.ndimage as ndimage
 
 
 UPPER_BOUND = 400
 LOWER_BOUND = -1000
-
-expand_slice = 20  # 轴向上向外扩张的slice数量
-size = 16  # 取样的slice数量
-stride = 3  # 取样的步长
-down_scale = 0.5
-slice_thickness = 2
 
 
 device = torch.device('cuda')
@@ -34,17 +27,28 @@ device = torch.device('cuda')
 def predict(model, loader):
     model.eval()
     preds = []
+    pred_logits = []
     with torch.no_grad():
         for dct in loader:
             images = dct['images'].to(device)
             pred = model(images)
-            pred = F.sigmoid(pred)
-            # pred = pred.squeeze()
+            pred_sofmax = F.softmax(pred, dim=1)
+            pred_sofmax = pred_sofmax.detach().cpu().numpy()
             pred = pred.detach().cpu().numpy()
-            preds.append(pred)
+            preds.append(pred_sofmax)
+            pred_logits.append(pred)
 
     preds = np.concatenate(preds, axis=0)
-    return preds
+    pred_logits = np.concatenate(pred_logits, axis=0)
+    return preds, pred_logits
+
+
+def load_ct_images(path):
+    image = SimpleITK.ReadImage(path)
+    spacing = image.GetSpacing()[-1]
+    image_arr = SimpleITK.GetArrayFromImage(image).astype(np.float32)
+    return image_arr, image
+
 
 
 class TestDataset(Dataset):
@@ -57,60 +61,41 @@ class TestDataset(Dataset):
 
     def __getitem__(self, idx):
         image = self.image_slices[idx]
-        # image = np.stack((image, image, image), axis=-1).astype(np.float32)
+        image = np.stack((image, image, image), axis=-1).astype(np.float32)
 
         if self.transform:
             transform = self.transform(image=image)
             image = transform['image']
 
-        image = np.expand_dims(image, axis=0).astype(np.float32)
+        image = np.transpose(image, (2, 0, 1))
 
         return {
             'images': image
         }
 
 
-def extract_slice(file):
-    ct_image = SimpleITK.ReadImage(file)
-    image = SimpleITK.GetArrayFromImage(ct_image)
-
-    image[image > UPPER_BOUND] = UPPER_BOUND
-    image[image < LOWER_BOUND] = LOWER_BOUND
-
-    image = ndimage.zoom(image, (ct_image.GetSpacing()[-1] / slice_thickness, down_scale, down_scale), order=3)
-    print("Image shape: ", image.shape)
-    n_slices = image.shape[0]
-
-    # flag = False
-    # start_slice = 0
-    # end_slice = start_slice + size - 1
-    # ct_array_list = []
-    image_slices = []
-    idx = 0
-    while idx < n_slices - size - 1:
-        image_slices.append(image[idx:idx + size, :, :])
-        idx += size
-
-    return image_slices, n_slices, ct_image
-
-
 def predict_valid():
-    inputdir = "../Lung_GTV/"
-    outdir = "../Lung_GTV_val_pred/190917/Unet3D-bs4-0/"
+    inputdir = "/data/Thoracic_OAR/"
 
     transform = valid_aug(image_size=512)
 
     # nii_files = glob.glob(inputdir + "/*/data.nii.gz")
-    threshold = 0.5
 
     folds = [0]
 
+    crop_size = (32, 256, 256)
+    xstep = 1
+    ystep = 256
+    zstep = 256
+    num_classes = 7
+
     for fold in folds:
-        log_dir = f"../logs/190918/Unet3D-bs4-fold-{fold}"
-        model = UNet3D(
+        print(fold)
+        outdir = f"/data/Thoracic_OAR_predict/Unet3D/"
+        log_dir = f"/logs/ss_miccai/Unet3D-fold-{fold}"
+        model = ResidualUNet3D(
             in_channels=1,
-            out_channels=1,
-            f_maps=64
+            out_channels=num_classes
         )
 
         ckp = os.path.join(log_dir, "checkpoints/best.pth")
@@ -120,40 +105,63 @@ def predict_valid():
         model = model.to(device)
 
         df = pd.read_csv(f'./csv/5folds/valid_{fold}.csv')
-        patient_ids = df.patient_id.values
+        patient_ids = df.patient_id.unique()
         for patient_id in patient_ids:
             print(patient_id)
             nii_file = f"{inputdir}/{patient_id}/data.nii.gz"
 
-            image_slices, n_slices, ct_image = extract_slice(nii_file)
+            image, ct_image = load_ct_images(nii_file)
 
-            # import pdb
-            # pdb.set_trace()
+            image = (image - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
+            image[image > 1] = 1.
+            image[image < 0] = 0.
+            image = image.astype(np.float32)
+            C, H, W = image.shape
 
-            dataset = TestDataset(image_slices, None)
-            dataloader = DataLoader(
-                dataset=dataset,
-                num_workers=4,
-                batch_size=2,
-                drop_last=False
-            )
+            deep_slices = np.arange(0, C - crop_size[0] + xstep, xstep)
+            height_slices = np.arange(0, H - crop_size[1] + ystep, ystep)
+            width_slices = np.arange(0, W - crop_size[2] + zstep, zstep)
 
-            pred_mask = predict(model, dataloader)
+            whole_pred = np.zeros((num_classes, C, H, W))
+            count_used = np.zeros((C, H, W)) + 1e-5
 
-            # pred_mask = torch.FloatTensor(pred_mask)
-            # pred_mask = F.upsample(pred_mask, (size, 512, 512), mode='trilinear').detach().cpu().numpy()
-            pred_mask = (pred_mask > threshold).astype(np.int16)
-            # pred_mask = pred_mask.reshpae(-1, 512, 512)
-            pred_mask = np.transpose(pred_mask, (1, 0, 2, 3, 4))
-            pred_mask = pred_mask[0]
-            pred_mask = pred_mask.reshape(-1, 256, 256)
-            count = n_slices - pred_mask.shape[0]
-            if count > 0:
-                pred_mask = np.concatenate([pred_mask, pred_mask[-count:, :, :]], axis=0)
+            # no update parameter gradients during testing
+            with torch.no_grad():
+                for i in tqdm(range(len(deep_slices))):
+                    for j in range(len(height_slices)):
+                        for k in range(len(width_slices)):
+                            deep = deep_slices[i]
+                            height = height_slices[j]
+                            width = width_slices[k]
+                            image_crop = image[deep: deep + crop_size[0],
+                                         height: height + crop_size[1],
+                                         width: width + crop_size[2]]
+                            image_crop = np.expand_dims(image_crop, axis=0)
+                            image_crop = np.expand_dims(image_crop, axis=0)
+                            image_crop = torch.from_numpy(image_crop).to(device)
+                            # import pdb
+                            # pdb.set_trace()
+                            outputs = model(image_crop)
+                            outputs = F.softmax(outputs, dim=1)
+                            # ----------------Average-------------------------------
+                            whole_pred[:,
+                                deep: deep + crop_size[0],
+                                height: height + crop_size[1],
+                                width: width + crop_size[2]
+                            ] += outputs.data.cpu().numpy()[0]
 
-            pred_mask = ndimage.zoom(pred_mask, (slice_thickness / ct_image.GetSpacing()[-1], 1/down_scale, 1/down_scale), order=3)
+                            count_used[deep: deep + crop_size[0],
+                            height: height + crop_size[1],
+                            width: width + crop_size[2]] += 1
 
+            whole_pred = whole_pred / count_used
+            pred_mask = np.argmax(whole_pred, axis=0).astype(np.uint8)
+
+            # pred_mask, pred_logits = predict(model, dataloader)
+            # # import pdb
+            # # pdb.set_trace()
             pred_mask = SimpleITK.GetImageFromArray(pred_mask)
+
             pred_mask.SetDirection(ct_image.GetDirection())
             pred_mask.SetOrigin(ct_image.GetOrigin())
             pred_mask.SetSpacing(ct_image.GetSpacing())
@@ -165,6 +173,8 @@ def predict_valid():
             SimpleITK.WriteImage(
                 pred_mask, patient_pred
             )
+            # np.save(f"{patient_dir}/predic_logits.npy", pred_logits)
+
 
 
 if __name__ == '__main__':

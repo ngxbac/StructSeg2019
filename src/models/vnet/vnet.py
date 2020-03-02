@@ -10,6 +10,7 @@ from segmentation_models_pytorch.encoders import get_encoder
 
 from .cbam import CBAM_Module
 from .aspp import ASPP, GroupNorm32
+from .scse import SCSEModule
 
 
 class ConvBn2d(nn.Module):
@@ -59,6 +60,8 @@ class DecoderBlock(nn.Module):
 
         if self.attention_type.find('cbam') >= 0:
             self.channel_gate = CBAM_Module(out_channels, reduction, attention_kernel_size)
+        elif self.attention_type.find('scse') >= 0:
+            self.channel_gate = SCSEModule(out_channels, reduction)
 
         if self.reslink:
             self.shortcut = ConvBn2d(
@@ -220,7 +223,7 @@ class VNet(EncoderDecoder):
             multi_task=False
     ):
         assert center in ['none', 'normal', 'aspp']
-        assert attention_type in ['none', 'cbam']
+        assert attention_type in ['none', 'cbam', 'scse']
 
         print("**" * 50)
         print("Encoder name: \t\t{}".format(encoder_name))

@@ -8,6 +8,9 @@ from callbacks import *
 from optimizers import *
 from schedulers import *
 from segmentation_models_pytorch import Unet as smpUnet
+from segmentation_models_pytorch import FPN
+
+import torchvision
 
 
 # Register models
@@ -16,7 +19,8 @@ registry.Model(UNet3D2)
 registry.Model(ResidualUNet3D)
 registry.Model(VNet)
 registry.Model(smpUnet)
-registry.Model(DeepLab)
+registry.Model(FPN)
+# registry.Model(DeepLab)
 registry.MODELS._late_add_callbacks = []
 
 # Register callbacks

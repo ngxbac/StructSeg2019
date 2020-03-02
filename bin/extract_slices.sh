@@ -19,5 +19,5 @@ patch=32
 
 
 
-python src/preprocessing.py extract-2d      --root /data/HaN_OAR/ \
-                                            --save_dir /data/HaN_OAR_2d/
+python src/preprocessing.py extract-2d      --root /data/Thoracic_OAR/ \
+                                            --save_dir /data/Thoracic_OAR_2d/

@@ -12,6 +12,7 @@ from tqdm import tqdm
 import SimpleITK
 from augmentation import valid_aug
 from segmentation_models_pytorch.unet import Unet
+from segmentation_models_pytorch import FPN
 from models import VNet
 
 
@@ -67,6 +68,38 @@ class TestDataset(Dataset):
         }
 
 
+class TestDatasetNB(Dataset):
+    def __init__(self, image_slices, transform):
+        self.image_slices = image_slices
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.image_slices)
+
+    def __getitem__(self, idx):
+        image = self.image_slices[idx]
+        if idx == 0:
+            image_prev = image
+        else:
+            image_prev = self.image_slices[idx-1]
+
+        if idx == len(self.image_slices) - 1:
+            image_next = image
+        else:
+            image_next = self.image_slices[idx + 1]
+
+        image = np.stack((image_prev, image, image_next), axis=-1).astype(np.float32)
+
+        if self.transform:
+            transform = self.transform(image=image)
+            image = transform['image']
+
+        image = np.transpose(image, (2, 0, 1))
+
+        return {
+            'images': image
+        }
+
 
 def extract_slice(file):
     ct_image = SimpleITK.ReadImage(file)
@@ -84,90 +117,35 @@ def extract_slice(file):
     return image_slices, ct_image
 
 
-
-def predict_test():
-    inputdir = "../Lung_GTV/"
-    outdir = "../Lung_GTV_pred/"
-
-    transform = valid_aug(image_size=512)
-
-    nii_files = glob.glob(inputdir + "/*/data.nii.gz")
-
-    threshold = 0.1
-    for nii_file in nii_files:
-        # if not '22' in nii_file:
-        #     continue
-        # print(nii_file)
-
-        image_slices, spacing = extract_slice(nii_file)
-        dataset = TestDataset(image_slices, transform)
-        dataloader = DataLoader(
-            dataset=dataset,
-            num_workers=4,
-            batch_size=16,
-            drop_last=False
-        )
-
-        pred_mask_all = 0
-        folds = [0]
-        for fold in folds:
-            log_dir = f"../logs/Unet-resnet34-fold-{fold}/"
-
-            model = Unet(
-                encoder_name='resnet34',
-                classes=1,
-                activation='sigmoid'
-            )
-
-            ckp = os.path.join(log_dir, "checkpoints/best.pth")
-            checkpoint = torch.load(ckp)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            model = nn.DataParallel(model)
-            model = model.to(device)
-
-            pred_mask = predict(model, dataloader)
-            pred_mask = (pred_mask > threshold).astype(np.uint8)
-            pred_mask = np.transpose(pred_mask, (1, 0, 2, 3))
-            pred_mask = pred_mask[0]
-
-            pred_mask_all += pred_mask
-
-        pred_mask_all = pred_mask_all / len(folds)
-        pred_mask_all = (pred_mask_all > threshold).astype(np.uint8)
-        pred_mask_all = SimpleITK.GetImageFromArray(pred_mask_all)
-        pred_mask_all.SetSpacing(spacing)
-
-        patient_id = nii_file.split("/")[-2]
-        patient_dir = f"{outdir}/{patient_id}"
-        os.makedirs(patient_dir, exist_ok=True)
-        patient_pred = f"{patient_dir}/predict.nii.gz"
-        SimpleITK.WriteImage(
-            pred_mask_all, patient_pred
-        )
-
-
 def predict_valid():
-    inputdir = "/data/HaN_OAR/"
-
+    inputdir = "/data/Thoracic_OAR/"
 
     transform = valid_aug(image_size=512)
 
     # nii_files = glob.glob(inputdir + "/*/data.nii.gz")
 
-    folds = [0]
+    folds = [0, 1, 2, 3, 4]
 
     for fold in folds:
-        outdir = f"/data/predict_task1/Vnet-se_resnext50_32x4d-weighted2-cedice19-cbam-fold-{fold}"
-        log_dir = f"/logs/ss_task1/Vnet-se_resnext50_32x4d-weighted2-cedice19-cbam-fold-{fold}"
-        model = VNet(
+        print(fold)
+        outdir = f"/data/Thoracic_OAR_predict/FPN-seresnext50/"
+        log_dir = f"/logs/ss_miccai/FPN-se_resnext50_32x4d-fold-{fold}"
+        # model = VNet(
+        #     encoder_name='se_resnext50_32x4d',
+        #     encoder_weights=None,
+        #     classes=7,
+        #     # activation='sigmoid',
+        #     group_norm=False,
+        #     center='none',
+        #     attention_type='scse',
+        #     reslink=True,
+        #     multi_task=False
+        # )
+
+        model = FPN(
             encoder_name='se_resnext50_32x4d',
-            classes=23,
-            # activation='sigmoid',
-            group_norm=False,
-            center='none',
-            attention_type='cbam',
-            reslink=True,
-            multi_task=False
+            encoder_weights=None,
+            classes=7
         )
 
         ckp = os.path.join(log_dir, "checkpoints/best.pth")
@@ -176,17 +154,13 @@ def predict_valid():
         model = nn.DataParallel(model)
         model = model.to(device)
 
-        df = pd.read_csv(f'./csv/task1_5folds/valid_{fold}.csv')
+        df = pd.read_csv(f'./csv/5folds/valid_{fold}.csv')
         patient_ids = df.patient_id.unique()
         for patient_id in patient_ids:
             print(patient_id)
             nii_file = f"{inputdir}/{patient_id}/data.nii.gz"
 
-            # threshold = 0.7
-
             image_slices, ct_image = extract_slice(nii_file)
-            # import pdb
-            # pdb.set_trace()
             dataset = TestDataset(image_slices, transform)
             dataloader = DataLoader(
                 dataset=dataset,
@@ -212,7 +186,8 @@ def predict_valid():
             SimpleITK.WriteImage(
                 pred_mask, patient_pred
             )
-            np.save(f"{patient_dir}/predic_logits.npy", pred_logits)
+            # np.save(f"{patient_dir}/predic_logits.npy", pred_logits)
+
 
 
 if __name__ == '__main__':

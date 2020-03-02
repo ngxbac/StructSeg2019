@@ -84,5 +84,32 @@ def split_kfold(
         valid_df.to_csv(os.path.join(save_dir, f'valid_{fold}.csv'), index=False)
 
 
+@cli.command()
+@click.option('--csv_file', type=str)
+@click.option('--n_folds', type=int)
+@click.option('--save_dir', type=str)
+def split_kfold_semi(
+    csv_file,
+    n_folds,
+    save_dir,
+):
+    os.makedirs(save_dir, exist_ok=True)
+    df = pd.read_csv(csv_file)
+    all_patients = df['patient_id'].unique()
+    unlabeled_patients = np.random.choice(all_patients, size=10, replace=False)
+    unlabeled_df = df[df['patient_id'].isin(unlabeled_patients)]
+    labeled_df = df[~df['patient_id'].isin(unlabeled_patients)].reset_index(drop=True)
+    patient_ids = labeled_df['patient_id'].values
+    kf = GroupKFold(n_splits=n_folds)
+    for fold, (train_idx, valid_idx) in enumerate(kf.split(labeled_df, groups=patient_ids)):
+        train_df = labeled_df.iloc[train_idx].reset_index(drop=True)
+        valid_df = labeled_df.iloc[valid_idx].reset_index(drop=True)
+
+        train_df.to_csv(os.path.join(save_dir, f'train_{fold}.csv'), index=False)
+        valid_df.to_csv(os.path.join(save_dir, f'valid_{fold}.csv'), index=False)
+
+    unlabeled_df.to_csv(os.path.join(save_dir, 'unlabeled_patients.csv'), index=False)
+
+
 if __name__ == '__main__':
     cli()

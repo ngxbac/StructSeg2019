@@ -216,3 +216,112 @@ class StructSegTrain2D(Dataset):
             'targets': mask
         }
 
+
+def cut_edge(data, keep_margin):
+    '''
+    function that cuts zero edge
+    '''
+    D, H, W = data.shape
+    D_s, D_e = 0, D - 1
+    H_s, H_e = 0, H - 1
+    W_s, W_e = 0, W - 1
+
+    while D_s < D:
+        if data[D_s].sum() != 0:
+            break
+        D_s += 1
+    while D_e > D_s:
+        if data[D_e].sum() != 0:
+            break
+        D_e -= 1
+    while H_s < H:
+        if data[:, H_s].sum() != 0:
+            break
+        H_s += 1
+    while H_e > H_s:
+        if data[:, H_e].sum() != 0:
+            break
+        H_e -= 1
+    while W_s < W:
+        if data[:, :, W_s].sum() != 0:
+            break
+        W_s += 1
+    while W_e > W_s:
+        if data[:, :, W_e].sum() != 0:
+            break
+        W_e -= 1
+
+    if keep_margin != 0:
+        D_s = max(0, D_s - keep_margin)
+        D_e = min(D - 1, D_e + keep_margin)
+        H_s = max(0, H_s - keep_margin)
+        H_e = min(H - 1, H_e + keep_margin)
+        W_s = max(0, W_s - keep_margin)
+        W_e = min(W - 1, W_e + keep_margin)
+
+    return int(D_s), int(D_e), int(H_s), int(H_e), int(W_s), int(W_e)
+
+
+
+import random
+class StructSegTrain3D(Dataset):
+
+    def __init__(self,
+                 csv_file,
+                 transform,
+                 mode='train'
+                 ):
+        df = pd.read_csv(csv_file)
+        self.transform = transform
+        self.patients = df['patient_id'].unique()
+        self.root = "/data/Thoracic_OAR/"
+        self.crop_size = (16, 256, 256)
+        self.mode = mode
+
+    def __len__(self):
+        return len(self.patients)
+
+    def __getitem__(self, idx):
+
+        patient_id = self.patients[idx]
+        data_path = os.path.join(self.root, str(patient_id), 'data.nii.gz')
+        label_path = os.path.join(self.root, str(patient_id), 'label.nii.gz')
+
+        image, mask = load_patient(data_path, label_path)
+        # image[image < 0.5] = 0
+        # image[image >= 0.5] = 1
+        # # image2 = image > 0
+        # margin = 32
+        # min_D_s, max_D_e, min_H_s, max_H_e, min_W_s, max_W_e = cut_edge(image, margin)
+        #
+        # image = image[min_D_s:max_D_e + 1, min_H_s: max_H_e + 1, min_W_s:max_W_e + 1]
+        # mask = mask[min_D_s:max_D_e + 1, min_H_s: max_H_e + 1, min_W_s:max_W_e + 1]
+
+        # print(image.shape)
+
+        D, H, W = image.shape
+
+        if self.mode == 'train':
+            rd = random.randint(0, D - self.crop_size[0])
+            rh = random.randint(0, H - self.crop_size[1])
+            rw = random.randint(0, W - self.crop_size[2])
+
+            # rd = (D - self.crop_size[0]) // 2
+            # rh = (H - self.crop_size[1]) // 2
+            # rw = (W - self.crop_size[2]) // 2
+        else:
+            rd = (D - self.crop_size[0]) // 2
+            rh = (H - self.crop_size[1]) // 2
+            rw = (W - self.crop_size[2]) // 2
+
+        image = image[rd: rd + self.crop_size[0], rh: rh + self.crop_size[1], rw: rw + self.crop_size[2]]
+        mask = mask[rd: rd + self.crop_size[0], rh: rh + self.crop_size[1], rw: rw + self.crop_size[2]]
+
+        image = np.expand_dims(image, axis=0).astype(np.float32)
+        mask = mask.astype(np.int)
+        # mask = np.expand_dims(mask, axis=0).astype(np.int)
+
+        return {
+            'images': image,
+            'targets': mask
+        }
