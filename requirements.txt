@@ -15,7 +15,7 @@ conda-build==3.17.8
 conda==4.6.14
 configparser==4.0.2
 crc32c==1.7
-cryptography==2.6.1
+cryptography==3.2
 cycler==0.10.0
 cython==0.29.13
 decorator==4.4.0
