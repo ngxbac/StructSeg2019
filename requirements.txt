@@ -33,7 +33,7 @@ imgaug==0.2.6
 ipython-genutils==0.2.0
 ipython==7.5.0
 jedi==0.13.3
-jinja2==2.10.1
+jinja2==2.11.3
 joblib==0.13.2
 kiwisolver==1.1.0
 libarchive-c==2.8
