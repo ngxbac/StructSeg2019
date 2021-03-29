@@ -71,7 +71,7 @@ pyarrow==0.14.1
 pycocotools==2.0.0
 pycosat==0.6.3
 pycparser==2.19
-pygments==2.3.1
+pygments==2.7.4
 pyopenssl==19.0.0
 pyparsing==2.4.2
 pysocks==1.6.8
