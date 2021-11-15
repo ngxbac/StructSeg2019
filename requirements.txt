@@ -58,7 +58,7 @@ pathtools==0.1.2
 pexpect==4.7.0
 pickleshare==0.7.5
 pillow==6.0.0
-pip==19.1
+pip==21.1
 pkginfo==1.5.0.1
 plotly==4.1.1
 pretrainedmodels==0.7.4
