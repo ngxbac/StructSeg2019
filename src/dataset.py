@@ -48,9 +48,10 @@ def load_itkfilewithtrucation(filename, upper=200, lower=-200):
 
 
 def resize(image, mask, spacing, slice_thickness, scale_ratio):
-    image = (image - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
-    image[image > 1] = 1.
-    image[image < 0] = 0.
+    # image = (image - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
+    # image = image / image.max()
+    # image[image > 1] = 1.
+    # image[image < 0] = 0.
     image = image.astype(np.float32)
 
     if slice_thickness and scale_ratio:
@@ -131,7 +132,7 @@ def slice_builder(imgpath, mskpath, slice_thichness, scale_ratio, slice, patch, 
 
 def slice_builder_2d(imgpath, mskpath, save_dir):
     image, mask = load_patient(imgpath, mskpath)
-    patient_id = imgpath.split("/")[-2]
+    patient_id = imgpath.split("/")[-1].split(".")[0]
     save_dir = os.path.join(save_dir, patient_id)
     os.makedirs(save_dir, exist_ok=True)
 

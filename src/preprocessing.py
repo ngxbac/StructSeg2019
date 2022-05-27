@@ -49,8 +49,8 @@ def extract_2d(
     # df = pd.read_csv(csv_file)
     all_patient_df = []
     import glob
-    paths = glob.glob(root + "/*/*data*")
-    masks = glob.glob(root + "/*/*label*")
+    paths = glob.glob(root + "/TrainImage/*.nii.gz")
+    masks = glob.glob(root + "/TrainMask/*.nii.gz")
 
     for imgpath, mskpath in zip(paths, masks):
         patient_df = slice_builder_2d(imgpath, mskpath, save_dir)
